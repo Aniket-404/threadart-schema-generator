@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User management
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  projects    ImageProject[]
+  sessions    UserSession[]
+  
+  @@map("users")
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_sessions")
+}
+
+// Image processing and string art generation
+model ImageProject {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  status        ProjectStatus @default(CREATED)
+  
+  // Image data
+  originalImage String   // Cloudinary URL
+  imageWidth    Int
+  imageHeight   Int
+  imageFormat   String
+  imageSize     Int      // bytes
+  
+  // Processing metadata
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  processedAt   DateTime?
+  
+  // User relation
+  userId        String
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  parameters    ProcessingParameters?
+  result        StringArtResult?
+  
+  @@map("image_projects")
+}
+
+model ProcessingParameters {
+  id              String @id @default(cuid())
+  projectId       String @unique
+  
+  // Canvas configuration
+  canvasWidth     Int    @default(500)
+  canvasHeight    Int    @default(500)
+  
+  // Pins and threading
+  numPins         Int    @default(256)
+  maxLines        Int    @default(4000)
+  lineOpacity     Float  @default(0.8)
+  
+  // Algorithm settings
+  algorithm       AlgorithmType @default(GREEDY)
+  iterations      Int    @default(1000)
+  convergenceThreshold Float @default(0.001)
+  
+  // Visual appearance
+  backgroundColor String @default("#FFFFFF")
+  threadColor     String @default("#000000")
+  
+  // Performance settings
+  useWebAssembly  Boolean @default(true)
+  useWebWorkers   Boolean @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  project         ImageProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@map("processing_parameters")
+}
+
+model StringArtResult {
+  id              String @id @default(cuid())
+  projectId       String @unique
+  
+  // Generated data
+  threadPath      Json   // Array of line coordinates
+  previewImage    String // Cloudinary URL of generated preview
+  
+  // Metrics
+  totalLines      Int
+  processingTime  Int    // milliseconds
+  algorithmUsed   AlgorithmType
+  
+  // Quality metrics
+  similarity      Float? // 0-1 similarity to original
+  contrast        Float?
+  sharpness       Float?
+  
+  // Metadata
+  generatedAt     DateTime @default(now())
+  
+  // Relations
+  project         ImageProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@map("string_art_results")
+}
+
+// Enums
+enum ProjectStatus {
+  CREATED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AlgorithmType {
+  GREEDY
+  GENETIC
+  SIMULATED_ANNEALING
+  HYBRID
+}

@@ -1,0 +1,22 @@
+services:
+  # Prisma migrations service - runs in same network as PostgreSQL
+  prisma-migrate:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: "postgresql://threadart_user:C0uAv:y:XIpOs@)!3f1#Q(^=J8)un!f7@threadart-postgres:5432/threadart_db?schema=public"
+    networks:
+      - threadart-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "npm install && npx prisma migrate dev --name initial_schema"
+    profiles:
+      - migrate
+
+networks:
+  threadart-network:
+    external: true
+    name: threadartschemagenerator_threadart-network
