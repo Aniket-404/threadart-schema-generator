@@ -1,0 +1,14 @@
+# ThreadArt Generator - Cron Configuration for Automated Backups
+# This file should be copied to /etc/cron.d/ in the backup container or host system
+
+# Backup PostgreSQL database daily at 2 AM UTC
+0 2 * * * root /scripts/backup/postgres-backup.sh >> /var/log/postgres-backup.log 2>&1
+
+# Backup Redis database daily at 2:15 AM UTC  
+15 2 * * * root /scripts/backup/redis-backup.sh >> /var/log/redis-backup.log 2>&1
+
+# Weekly cleanup of old log files (keep 4 weeks)
+0 3 * * 0 root find /var/log -name "*-backup.log" -mtime +28 -delete
+
+# Health check backups - verify latest backup integrity weekly
+0 4 * * 1 root /scripts/backup/verify-backups.sh >> /var/log/backup-verification.log 2>&1

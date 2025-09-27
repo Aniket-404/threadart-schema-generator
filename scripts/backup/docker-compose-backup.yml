@@ -1,0 +1,36 @@
+# ThreadArt Backup Automation - Docker Compose Service
+# Add this to your docker-compose.yml to enable automated backups
+
+services:
+  backup-scheduler:
+    image: alpine:latest
+    container_name: threadart-backup-scheduler
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - BACKUP_RETENTION_DAYS=7
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - BACKUP_ALERT_EMAIL=${BACKUP_ALERT_EMAIL:-admin@threadart.local}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+    volumes:
+      - ./scripts/backup:/scripts/backup:ro
+      - backup_data:/backup
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log/threadart:/var/log/threadart
+    networks:
+      - threadart-network
+    command: >
+      sh -c "
+        apk add --no-cache bash curl docker-cli &&
+        # Install cron
+        echo '0 2 * * * /scripts/backup/backup-scheduler.sh' > /var/spool/cron/crontabs/root &&
+        # Start cron daemon
+        crond -f -l 2
+      "
+    restart: unless-stopped
+
+volumes:
+  backup_data:
+    driver: local
